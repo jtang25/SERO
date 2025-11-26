@@ -1,0 +1,17 @@
+/* Remove attribution + logo */
+.mapboxgl-ctrl-attrib,
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+
+/* Remove Next.js default body margins */
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+div[mapboxgl-children] {
+  display: none !important;
+}
+.mapboxgl-ctrl-compass {
+  display: none !important;
+}
