@@ -7,9 +7,8 @@ spatio-temporal risk model over the city, and computes optimized vehicle deploym
 stations. Planners can visualize risk in real-time, edit station layouts, and run an optimizer
 that recommends concrete rebalancing moves to better cover predicted demand.
 
-> ⚠️ This is an independent personal project, not affiliated with the City of Seattle or Palantir.
 
----
+https://github.com/user-attachments/assets/9714dae9-debc-4175-b34e-f253036de3bd
 
 ## Features
 
