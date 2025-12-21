@@ -6,11 +6,6 @@ from pathlib import Path
 print("Downloading Seattle road network (drive)…")
 G = ox.graph_from_place("Seattle, Washington, USA", network_type="drive")
 
-# OPTIONAL: if you wanted only the largest connected component, you would do:
-# import networkx as nx
-# G = nx.utils.misc.largest_connected_component(G)  # or similar
-# but you said you want everything, so we skip that.
-
 # Add estimated speeds and travel times (optional but nice for routing)
 G = ox.add_edge_speeds(G)        # adds 'speed_kph'
 G = ox.add_edge_travel_times(G)  # adds 'travel_time' (seconds)

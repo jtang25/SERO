@@ -17,6 +17,5 @@ class PoliceCall(Base):
 
     beat = Column(Text, index=True)
 
-    # Optional – you can keep these null and later fill from beat centroids
     latitude = Column(Float)
     longitude = Column(Float)

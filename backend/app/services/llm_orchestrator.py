@@ -52,9 +52,7 @@ def handle_message(db: Session, message: str, view_state: dict):
     horizon_hours = view_state.get("horizon_hours", 3)
     ts_now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
 
-    # ------------------------------------------------------------------
     # 1) Build snapshot features at ts_now
-    # ------------------------------------------------------------------
     df = feature_builder.build_snapshot_features(db, ts_now)
 
     # Probability of any incident (classification)
@@ -63,9 +61,7 @@ def handle_message(db: Session, message: str, view_state: dict):
     # Expected number of incidents (regression)
     expected = risk_model.predict_expected(df)
 
-    # ------------------------------------------------------------------
     # 2) Pack per-cell risk info (probability + expected volume)
-    # ------------------------------------------------------------------
     cells = []
     for cell_id, p, exp in zip(df["cell_id"].values, probs, expected):
         lat, lon = grid.cell_to_centroid(cell_id)
@@ -85,14 +81,11 @@ def handle_message(db: Session, message: str, view_state: dict):
         "cells": cells,
     }
 
-    # ------------------------------------------------------------------
     # 3) Intent-specific behavior
-    # ------------------------------------------------------------------
     if intent == "optimize_deployment":
         # How many units to deploy?
         num_units = extract_num_units(message, view_state.get("num_units", 6))
 
-        # Candidates: we just need ids + coords; optimizer can use risk/exp from 'cells'
         candidates = [
             {"cell_id": c["cell_id"], "lat": c["lat"], "lon": c["lon"]}
             for c in cells
@@ -126,7 +119,7 @@ def handle_message(db: Session, message: str, view_state: dict):
         }
 
     elif intent == "explain_risk":
-        # Top hotspots by risk; expected_incidents is available in JSON too
+        # Top hotspots by risk
         top = sorted(cells, key=lambda c: c["risk"], reverse=True)[:10]
         context = json.dumps({"top_hotspots": top}, default=float)
 
@@ -145,7 +138,6 @@ def handle_message(db: Session, message: str, view_state: dict):
         }
 
     else:
-        # generic: summarize situation with both risk & expected volume
         top = sorted(cells, key=lambda c: c["risk"], reverse=True)[:5]
         context = json.dumps({"top_hotspots": top}, default=float)
 

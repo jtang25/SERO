@@ -47,7 +47,7 @@ async def ingest_fire_once(db: Session) -> int:
 
     params = {
         "$limit": 100000,
-        "$order": "datetime DESC",  # valid field on this dataset
+        "$order": "datetime DESC", 
     }
 
     async with httpx.AsyncClient(timeout=60.0) as client:
@@ -77,11 +77,9 @@ async def ingest_fire_once(db: Session) -> int:
 
         ts = _parse_dt(row.get("datetime"))
 
-        # These field names are exactly what the dataset exposes via CSV/JSON:
         # address, type, datetime, latitude, longitude, report_location, incident_number
         address = row.get("address")
         call_type = row.get("type")
-        # Dataset has no separate description -> reuse type as description
         call_description = call_type
 
         lat = _parse_float(row.get("latitude"))
@@ -91,7 +89,7 @@ async def ingest_fire_once(db: Session) -> int:
             incident_number=incident_number,
             call_type=call_type,
             call_description=call_description,
-            priority=None,        # dataset doesn't expose priority; leave as None
+            priority=None,
             ts=ts,
             address=address,
             latitude=lat,

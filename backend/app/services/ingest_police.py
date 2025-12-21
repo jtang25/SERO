@@ -67,7 +67,6 @@ async def ingest_police_once(db: Session) -> int:
 
     rows = resp.json()
 
-    # Preload existing CAD IDs to avoid unique violations
     existing_ids = {
         row[0]
         for row in db.query(PoliceCall.cad_event_number).all()
@@ -83,7 +82,6 @@ async def ingest_police_once(db: Session) -> int:
             continue
 
         if cad_event_number in existing_ids:
-            # Already in DB (or in this batch); skip to avoid unique constraint errors
             skipped_existing += 1
             continue
 
@@ -104,7 +102,6 @@ async def ingest_police_once(db: Session) -> int:
         )
         db.add(call)
 
-        # Track in-memory so we don't insert same CAD twice in this batch
         existing_ids.add(cad_event_number)
         inserted += 1
 
