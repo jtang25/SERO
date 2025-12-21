@@ -7,7 +7,8 @@ spatio-temporal risk model over the city, and computes optimized vehicle deploym
 stations. Planners can visualize risk in real-time, edit station layouts, and run an optimizer
 that recommends concrete rebalancing moves to better cover predicted demand.
 
-https://raw.githubusercontent.com/jtang25/SERO/main/sero_demo.mp4
+
+https://github.com/user-attachments/assets/9714dae9-debc-4175-b34e-f253036de3bd
 ---
 
 ## Features
