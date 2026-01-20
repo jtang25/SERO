@@ -24,6 +24,7 @@ import {
   type DeploymentResponse,
   type RiskApiCell,
 } from "../types/vehicles";
+import type { ChatContext } from "../types/chat";
 import {
   FIRE_STATION_INPUTS,
   POLICE_STATION_INPUTS,
@@ -89,6 +90,15 @@ function riskToColor(risk: number): [number, number, number, number] {
   return [255, 0, 0, 210];
 }
 
+function latLonToCellId(lat: number, lon: number): number | null {
+  const nLat = Math.ceil((GRID_MAX_LAT - GRID_MIN_LAT) / GRID_LAT_STEP);
+  const nLon = Math.ceil((GRID_MAX_LON - GRID_MIN_LON) / GRID_LON_STEP);
+  const i = Math.floor((lat - GRID_MIN_LAT) / GRID_LAT_STEP);
+  const j = Math.floor((lon - GRID_MIN_LON) / GRID_LON_STEP);
+  if (i < 0 || j < 0 || i >= nLat || j >= nLon) return null;
+  return i * nLon + j;
+}
+
 function fleetPathColor(fleet: FleetType): [number, number, number] {
   return fleet === "fire" ? [255, 120, 120] : [80, 160, 255];
 }
@@ -112,12 +122,14 @@ type VehiclesMapProps = {
   style?: CSSProperties;
   fireStations?: StationInput[];
   policeStations?: StationInput[];
+  onContextChange?: (context: ChatContext) => void;
 };
 
 export default function VehiclesMap({
   style,
   fireStations,
   policeStations,
+  onContextChange,
 }: VehiclesMapProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [playing, setPlaying] = useState(true);
@@ -142,6 +154,7 @@ export default function VehiclesMap({
   const [selectedStationId, setSelectedStationId] = useState<string | null>(
     null
   );
+  const [selectedCellId, setSelectedCellId] = useState<number | null>(null);
 
   const [controlsCollapsed, setControlsCollapsed] = useState(false);
 
@@ -399,6 +412,84 @@ export default function VehiclesMap({
     );
   }, [stations, selectedStationId]);
 
+  const selectedCell: GridCell | null = useMemo(() => {
+    if (selectedCellId === null) return null;
+    return gridCells.find((cell) => cell.cellId === selectedCellId) ?? null;
+  }, [gridCells, selectedCellId]);
+
+  useEffect(() => {
+    if (!onContextChange) return;
+    const focusedCellId =
+      selectedCellId ??
+      latLonToCellId(viewState.latitude, viewState.longitude);
+
+    const selectedStationContext = selectedStation
+      ? {
+          station_id: (selectedStation as any).station_id,
+          name:
+            (selectedStation as any).station_name ??
+            (selectedStation as any).name,
+          fleet_type: selectedStation.fleet_type,
+          lat: selectedStation.lat,
+          lon: selectedStation.lon,
+          in_move: selectedStation.inMove ?? false,
+        }
+      : null;
+
+    const selectedTripContext = selectedTrip
+      ? {
+          id: selectedTrip.id,
+          fleet_type: selectedTrip.fleet_type,
+          from_station_id: selectedTrip.fromStationId,
+          to_station_id: selectedTrip.toStationId,
+        }
+      : null;
+
+    const stationIds = stations
+      .map((s) => (s as any).station_id)
+      .filter(Boolean);
+    const movingStationIds = stations
+      .filter((s) => s.inMove)
+      .map((s) => (s as any).station_id)
+      .filter(Boolean);
+    const moves = (trips ?? [])
+      .map((t) => ({
+        from_station_id: t.fromStationId,
+        to_station_id: t.toStationId,
+        fleet_type: t.fleet_type,
+      }))
+      .filter((m) => m.from_station_id && m.to_station_id)
+      .slice(0, 20);
+
+    const context: ChatContext = {
+      map: {
+        center: { lat: viewState.latitude, lon: viewState.longitude },
+        zoom: viewState.zoom,
+        pitch: viewState.pitch,
+        bearing: viewState.bearing,
+      },
+      focused_cell_id: focusedCellId,
+      selected_cell_id: selectedCellId,
+      selected_station: selectedStationContext,
+      selected_trip: selectedTripContext,
+      deployment: {
+        station_ids: stationIds,
+        moving_station_ids: movingStationIds,
+        moves,
+      },
+    };
+
+    onContextChange(context);
+  }, [
+    onContextChange,
+    viewState,
+    selectedCellId,
+    selectedStation,
+    selectedTrip,
+    stations,
+    trips,
+  ]);
+
   const startLatLon: [number, number] | null = selectedTrip
     ? [selectedTrip.path[0].lat, selectedTrip.path[0].lon]
     : null;
@@ -479,8 +570,8 @@ export default function VehiclesMap({
     const heatmapLayer = new PolygonLayer<GridCell>({
       id: "risk-grid",
       data: gridCells,
-      pickable: false,
-      stroked: false,
+      pickable: true,
+      stroked: true,
       filled: true,
       getPolygon: (d: GridCell) => [
         [d.minLon, d.minLat],
@@ -489,7 +580,22 @@ export default function VehiclesMap({
         [d.maxLon, d.minLat],
       ],
       getFillColor: (d: GridCell) => riskToColor(d.risk),
+      getLineColor: (d: GridCell) =>
+        d.cellId === selectedCellId ? [255, 255, 255, 200] : [0, 0, 0, 0],
+      getLineWidth: (d: GridCell) => (d.cellId === selectedCellId ? 2 : 0),
+      lineWidthUnits: "pixels",
       opacity: 0.5,
+      onClick: (info) => {
+        if (!info.object) return;
+        const cell = info.object as GridCell;
+        setSelectedCellId(cell.cellId);
+        setSelectedTripId(null);
+        setSelectedStationId(null);
+      },
+      updateTriggers: {
+        getLineColor: [selectedCellId],
+        getLineWidth: [selectedCellId],
+      },
     });
 
     const tripsLayer = new TripsLayer<TripWithMeta>({
@@ -541,6 +647,7 @@ export default function VehiclesMap({
         if (!info.object) return;
         setSelectedTripId((info.object as TripWithMeta).id);
         setSelectedStationId(null);
+        setSelectedCellId(null);
       },
     });
 
@@ -580,6 +687,7 @@ export default function VehiclesMap({
         const station = info.object as StationWithFlag;
         setSelectedStationId((station as any).station_id);
         setSelectedTripId(null);
+        setSelectedCellId(null);
       },
     });
 
@@ -598,7 +706,7 @@ export default function VehiclesMap({
     });
 
     return ordered;
-  }, [trips, gridCells, stations, currentTime, layerConfig]);
+  }, [trips, gridCells, stations, currentTime, layerConfig, selectedCellId]);
 
   if (!trips) {
     return (
@@ -640,6 +748,7 @@ export default function VehiclesMap({
           if (!info.object) {
             setSelectedTripId(null);
             setSelectedStationId(null);
+            setSelectedCellId(null);
           }
         }}
       >
@@ -1047,7 +1156,7 @@ export default function VehiclesMap({
         </div>
       )}
 
-      {(selectedTrip || selectedStation) && (
+      {(selectedTrip || selectedStation || selectedCell) && (
         <div
           style={{
             position: "absolute",
@@ -1092,12 +1201,15 @@ export default function VehiclesMap({
                 ? (selectedStation as any).station_name ??
                   (selectedStation as any).name ??
                   (selectedStation as any).station_id
+                : selectedCell
+                ? `Cell ${selectedCell.cellId}`
                 : ""}
             </div>
             <button
               onClick={() => {
                 setSelectedTripId(null);
                 setSelectedStationId(null);
+                setSelectedCellId(null);
               }}
               style={{
                 border: "none",
@@ -1176,6 +1288,16 @@ export default function VehiclesMap({
 
                 <span style={{ opacity: 0.7 }}>In move</span>
                 <span>{selectedStation.inMove ? "Yes" : "No"}</span>
+              </>
+            )}
+
+            {selectedCell && (
+              <>
+                <span style={{ opacity: 0.7 }}>Cell ID</span>
+                <span>{selectedCell.cellId}</span>
+
+                <span style={{ opacity: 0.7 }}>Risk</span>
+                <span>{selectedCell.risk.toFixed(2)}</span>
               </>
             )}
           </div>

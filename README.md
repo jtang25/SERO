@@ -17,7 +17,7 @@ https://github.com/user-attachments/assets/9714dae9-debc-4175-b34e-f253036de3bd
   - Shows both probability of at least one incident and expected incident volume.
 
 - **Station editor**
-  - Configure fire/police/EMS stations with current vehicle counts.
+  - Configure fire/police/EMS s tations with current vehicle counts.
   - Visualize deployments and station catchments on an interactive map.
 
 - **Optimization engine**
@@ -76,3 +76,30 @@ Raw 911 Data ──► Supabase/Postgres ──► Offline Training (notebooks/)
                        │                                │
                        ▼                                ▼
               React/TS + Mapbox UI  ◄─────────────── User
+
+---
+
+## RAG Chatbot (911 Q&A)
+
+SERO includes a retrieval-augmented chat assistant that answers questions using
+incident records, cell summaries, and the current map context.
+
+Setup:
+
+1. Enable pgvector and create the embedding tables/functions.
+   - Run `backend/sql/vector_search.sql` in the Supabase SQL editor.
+2. Generate embeddings for existing data.
+   - `python backend/scripts/embed_records.py --target all`
+3. Configure environment variables.
+   - `OPENAI_API_KEY` (required)
+   - `OPENAI_EMBED_MODEL` (default: `text-embedding-3-small`)
+   - `OPENAI_CHAT_MODEL` (default: `gpt-4o-mini`)
+4. Use the chat endpoints.
+   - `POST /chat/stream` for SSE streaming
+   - `POST /chat` for a single response payload
+
+Notes:
+
+- The chat panel sends map center, selected cell, and deployment summary in
+  `view_state` to ground answers.
+- Re-run the embedding script periodically to keep new incidents searchable.

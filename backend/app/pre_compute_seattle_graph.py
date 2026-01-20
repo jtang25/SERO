@@ -6,7 +6,7 @@ from pathlib import Path
 print("Downloading Seattle road network (drive)…")
 G = ox.graph_from_place("Seattle, Washington, USA", network_type="drive")
 
-# Add estimated speeds and travel times (optional but nice for routing)
+# Add estimated speeds and travel times
 G = ox.add_edge_speeds(G)        # adds 'speed_kph'
 G = ox.add_edge_travel_times(G)  # adds 'travel_time' (seconds)
 

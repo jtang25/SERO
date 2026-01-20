@@ -7,16 +7,20 @@ import StationsEditor from "../components/StationEditor";
 import ChatPanel from "../components/ChatPanel";
 import { FIRE_STATION_INPUTS, POLICE_STATION_INPUTS } from "../data/stations";
 import type { StationInput } from "../types/vehicles";
+import type { ChatContext } from "../types/chat";
 
 // Load DeckGL + Map only on client
 const VehiclesMap = dynamic(() => import("../components/Vehicles"), {
   ssr: false,
 }); 
 
-type PanelKey = "vehicles" | "stations" | "chat";
+type PanelKey = "vehicles" | "stations";
+type NavKey = PanelKey | "chat";
 
 const HomePage: NextPage = () => {
   const [activePanel, setActivePanel] = useState<PanelKey>("vehicles");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatContext, setChatContext] = useState<ChatContext>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [fireStations, setFireStations] = useState<StationInput[]>(
@@ -26,11 +30,21 @@ const HomePage: NextPage = () => {
     POLICE_STATION_INPUTS
   );
 
-  const navItems: { key: PanelKey; label: string; short: string }[] = [
+  const navItems: { key: NavKey; label: string; short: string }[] = [
     { key: "vehicles", label: "Vehicle simulation", short: "V" },
     { key: "stations", label: "Station editor", short: "S" },
     { key: "chat", label: "Chat", short: "C" },
   ];
+
+  const handleNavClick = (key: NavKey) => {
+    if (key === "chat") {
+      setChatOpen((prev) => !prev);
+      setActivePanel("vehicles");
+      return;
+    }
+    setActivePanel(key);
+    setChatOpen(false);
+  };
 
   return (
     <div
@@ -113,7 +127,8 @@ const HomePage: NextPage = () => {
 
         <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {navItems.map((item) => {
-            const isActive = activePanel === item.key;
+            const isActive =
+              item.key === "chat" ? chatOpen : activePanel === item.key;
 
             const buttonStyle: React.CSSProperties = sidebarCollapsed
               ? {
@@ -160,7 +175,7 @@ const HomePage: NextPage = () => {
             return (
               <button
                 key={item.key}
-                onClick={() => setActivePanel(item.key)}
+                onClick={() => handleNavClick(item.key)}
                 style={buttonStyle}
               >
                 <span style={iconStyle}>{item.short}</span>
@@ -192,10 +207,30 @@ const HomePage: NextPage = () => {
       {/* Main content area */}
       <div style={{ flex: 1, position: "relative" }}>
         {activePanel === "vehicles" && (
-          <VehiclesMap
-            fireStations={fireStations}
-            policeStations={policeStations}
-          />
+          <>
+            <VehiclesMap
+              fireStations={fireStations}
+              policeStations={policeStations}
+              onContextChange={setChatContext}
+            />
+            {chatOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 24,
+                  right: 24,
+                  display: "flex",
+                  alignItems: "stretch",
+                  zIndex: 20,
+                }}
+              >
+                <ChatPanel
+                  context={chatContext}
+                  onClose={() => setChatOpen(false)}
+                />
+              </div>
+            )}
+          </>
         )}
 
         {activePanel === "stations" && (
@@ -207,7 +242,6 @@ const HomePage: NextPage = () => {
           />
         )}
 
-        {activePanel === "chat" && <ChatPanel />}
       </div>
     </div>
   );
