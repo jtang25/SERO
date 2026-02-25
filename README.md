@@ -1,6 +1,6 @@
 # Seattle Emergency Risk Optimizer (SERO)
 
-SERO is a map-based emergency fleet planning app inspired by Palantir-style AIP workflows.
+SERO is a map-based emergency fleet planning app.
 
 It ingests Seattle fire/police 911 open data into a Supabase (Postgres) backend, learns a
 spatio-temporal risk model over the city, and computes optimized vehicle deployments across
